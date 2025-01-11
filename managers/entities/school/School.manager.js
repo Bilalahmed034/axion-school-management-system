@@ -142,15 +142,20 @@ module.exports = class SchoolManager {
 
   async getSchoolById({ __token, schoolId }) {
     try {
+      const isGranted = await this.shark.isGranted({
+        layer: 'school',
+        nodeId: schoolId,
+        action: 'read',
+        userId: __token.userId
+      });
+
+      if (!isGranted) {
+        return { error: 'Unauthorized', code: 401 };
+      }
+
       const school = await School.findById(schoolId)
-        .populate('administrators', 'name email')
-        .populate({
-          path: 'classrooms',
-          populate: {
-            path: 'students',
-            match: { status: 'active' }
-          }
-        });
+        .populate('administrators')
+        .populate('classrooms');
 
       if (!school) {
         return { error: 'School not found', code: 404 };

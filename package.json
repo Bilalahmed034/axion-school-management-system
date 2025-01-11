@@ -10,17 +10,22 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
+    "aeon-machine": "^0.1.4",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
     "express": "^4.17.1",
-    "mongoose": "^6.0.0",
-    "jsonwebtoken": "^8.5.1",
-    "redis": "^3.1.2",
     "express-rate-limit": "^5.3.0",
-    "dotenv": "^10.0.0"
+    "ion-cortex": "^2.1.5",
+    "jsonwebtoken": "^8.5.1",
+    "md5": "^2.3.0",
+    "mongoose": "^6.0.0",
+    "qantra-pineapple": "^1.1.8",
+    "redis": "^3.1.2"
   },
   "devDependencies": {
     "jest": "^27.0.6",
-    "supertest": "^6.1.6",
-    "nodemon": "^2.0.12"
+    "nodemon": "^2.0.12",
+    "supertest": "^6.1.6"
   },
   "jest": {
     "testEnvironment": "node",

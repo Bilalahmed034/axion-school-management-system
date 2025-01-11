@@ -1,31 +1,60 @@
-module.exports = class User { 
+const User = require('./user.schema');
+const jwt = require('jsonwebtoken');
+const md5 = require('md5');
 
-    constructor({utils, cache, config, cortex, managers, validators, mongomodels }={}){
-        this.config              = config;
-        this.cortex              = cortex;
-        this.validators          = validators; 
-        this.mongomodels         = mongomodels;
-        this.tokenManager        = managers.token;
-        this.usersCollection     = "users";
-        this.userExposed         = ['createUser'];
+module.exports = class UserManager {
+    constructor({ config, cortex, validators, mongomodels, managers }) {
+        this.config = config;
+        this.cortex = cortex;
+        this.validators = validators;
+        this.mongomodels = mongomodels;
+        this.shark = managers.shark;
+        this.httpExposed = [
+            "createUser",
+            "__token=updateUser",
+            "__token=deleteUser",
+            "__token=getUserById",
+            "login"
+        ];
     }
 
-    async createUser({username, email, password}){
-        const user = {username, email, password};
+    async login({ email, password }) {
+        try {
+            const user = await User.findOne({
+                email,
+                password: md5(password),
+                status: 'active'
+            });
 
-        // Data validation
-        let result = await this.validators.user.createUser(user);
-        if(result) return result;
-        
-        // Creation Logic
-        let createdUser     = {username, email, password}
-        let longToken       = this.tokenManager.genLongToken({userId: createdUser._id, userKey: createdUser.key });
-        
-        // Response
-        return {
-            user: createdUser, 
-            longToken 
-        };
+            if (!user) {
+                return { error: 'Invalid credentials', code: 401 };
+            }
+
+            const token = jwt.sign(
+                { id: user._id, role: user.role },
+                this.config.jwt.secret,
+                { expiresIn: '24h' }
+            );
+
+            return { token, user: { id: user._id, role: user.role } };
+        } catch (error) {
+            return { error: error.message, code: 400 };
+        }
     }
 
+    async createUser({ name, email, password, role }) {
+        try {
+            const user = new User({
+                name,
+                email,
+                password: md5(password),
+                role
+            });
+
+            await user.save();
+            return { user };
+        } catch (error) {
+            return { error: error.message, code: 400 };
+        }
+    }
 }

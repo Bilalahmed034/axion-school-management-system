@@ -1,54 +1,50 @@
-const config = require("./config/index.config.js");
-const Cortex = require("ion-cortex");
-const ManagersLoader = require("./loaders/ManagersLoader.js");
-const Aeon = require("aeon-machine");
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
 
-process.on("uncaughtException", (err) => {
-  console.log(`Uncaught Exception:`);
-  console.log(err, err.stack);
+// Register schemas in correct order
+require('./managers/entities/user/user.schema');
+require('./managers/entities/school/school.schema');
+require('./managers/entities/classroom/classroom.schema');
+require('./managers/entities/student/student.schema');
 
-  process.exit(1);
+// Import routes
+const authRoutes = require('./routes/auth.routes');
+const schoolRoutes = require('./routes/school.routes');
+const classroomRoutes = require('./routes/classroom.routes');
+const studentRoutes = require('./routes/student.routes');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school_management', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/school', schoolRoutes);
+app.use('/api/classroom', classroomRoutes);
+app.use('/api/student', studentRoutes);
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-  console.log("Unhandled rejection at ", promise, `reason:`, reason);
-  process.exit(1);
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
-const cache = require("./cache/cache.dbh")({
-  prefix: config.dotEnv.CACHE_PREFIX,
-  url: config.dotEnv.CACHE_REDIS,
-});
-
-const Oyster = require("oyster-db");
-const oyster = new Oyster({
-  url: config.dotEnv.OYSTER_REDIS,
-  prefix: config.dotEnv.OYSTER_PREFIX,
-});
-
-const cortex = new Cortex({
-  prefix: config.dotEnv.CORTEX_PREFIX,
-  url: config.dotEnv.CORTEX_REDIS,
-  type: config.dotEnv.CORTEX_TYPE,
-  state: () => {
-    return {};
-  },
-  activeDelay: "50",
-  idlDelay: "200",
-});
-const aeon = new Aeon({
-  cortex,
-  timestampFrom: Date.now(),
-  segmantDuration: 500,
-});
-
-const managersLoader = new ManagersLoader({
-  config,
-  cache,
-  cortex,
-  oyster,
-  aeon,
-});
-const managers = managersLoader.load();
-
-managers.userServer.run();
+module.exports = app;
